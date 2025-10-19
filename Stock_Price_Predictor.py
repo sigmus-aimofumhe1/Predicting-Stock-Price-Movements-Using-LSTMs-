@@ -274,3 +274,78 @@ print(f"Bidirectional LSTM → MSE: {mse_bi:.4f}, MAE: {mae_bi:.4f}")
 # --- Step 10: Save Models for Next Phase (Week 8–10) ---
 stacked_model.save("stacked_lstm_model.h5")
 bilstm_model.save("bilstm_model.h5")
+
+
+# --------------------------------------
+# Weeks 9 - 10: Real-Time Prediction Simulation + Model Comparison Dashboard
+# --------------------------------------
+
+# --- Step 1: Load Saved Models ---
+stacked_model = load_model("stacked_lstm_model.h5")
+bilstm_model = load_model("bilstm_model.h5")
+
+# --- Step 2: Fetch Most Recent Stock Data ---
+ticker = "AAPL"
+data = yf.download(ticker, start="2023-01-01", end="2025-10-01", interval="1d")
+prices = data["Close"].values.reshape(-1, 1)
+
+# --- Step 3: Scale Data ---
+scaler = MinMaxScaler(feature_range=(0, 1))
+scaled_data = scaler.fit_transform(prices)
+
+# --- Step 4: Create a Sliding Window for the Most Recent Data ---
+def create_latest_sequence(data, window_size=60):
+    X = data[-window_size:]
+    return np.reshape(X, (1, window_size, 1))
+
+window_size = 60
+X_latest = create_latest_sequence(scaled_data, window_size)
+
+# --- Step 5: Generate Predictions from Both Models ---
+stacked_pred = stacked_model.predict(X_latest)
+bilstm_pred = bilstm_model.predict(X_latest)
+
+# --- Step 6: Inverse Transform Predictions to Original Scale ---
+stacked_pred_rescaled = scaler.inverse_transform(stacked_pred)
+bilstm_pred_rescaled = scaler.inverse_transform(bilstm_pred)
+
+print(f"Latest Predicted Price (Stacked LSTM): ${stacked_pred_rescaled[0][0]:.2f}")
+print(f"Latest Predicted Price (Bidirectional LSTM): ${bilstm_pred_rescaled[0][0]:.2f}")
+
+# --- Step 7: Plot Predictions vs Actual Data ---
+plt.figure(figsize=(12,6))
+plt.plot(prices[-100:], label="Actual Price (Last 100 Days)")
+plt.axhline(y=stacked_pred_rescaled[0][0], color='r', linestyle='--', label="Stacked LSTM Prediction")
+plt.axhline(y=bilstm_pred_rescaled[0][0], color='g', linestyle='--', label="Bidirectional LSTM Prediction")
+plt.title(f"{ticker} – Real-Time Prediction Comparison")
+plt.xlabel("Days")
+plt.ylabel("Price ($)")
+plt.legend()
+plt.show()
+
+# --- Step 8: Optional: Live Simulation of Real-Time Updates ---
+# (This part simulates real-time prediction updates every few seconds)
+
+print("\nSimulating real-time predictions...\n")
+for i in range(3):  # simulate 3 updates
+    # Fetch latest data (5 days, 1-hour intervals)
+    latest_data = yf.download(ticker, period="5d", interval="1h")["Close"]
+    latest_data = latest_data.values.reshape(-1, 1)  # ensure correct 2D shape for scaler
+
+    # Transform the most recent portion
+    scaled_latest = scaler.transform(latest_data[-window_size:])
+
+    # Pad if data is less than window_size
+    if len(scaled_latest) < window_size:
+        padding = np.zeros((window_size - len(scaled_latest), 1))
+        scaled_latest = np.vstack((padding, scaled_latest))
+
+    # Reshape for LSTM input
+    X_live = np.reshape(scaled_latest, (1, window_size, 1))
+
+    # Predict next value
+    pred_live = bilstm_model.predict(X_live)
+    pred_live_rescaled = scaler.inverse_transform(pred_live)
+
+    print(f"Live Update {i+1}: Predicted Next Price = ${pred_live_rescaled[0][0]:.2f}")
+    time.sleep(2)  # simulate waiting for new data
