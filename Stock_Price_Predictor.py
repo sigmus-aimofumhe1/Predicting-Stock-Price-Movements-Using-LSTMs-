@@ -3,6 +3,9 @@
 # Weeks 1–2 Code: Data Collection, EDA, Preprocessing
 
 # --- Imports ---
+import os
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"   # Disables threading lock
+
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -14,7 +17,6 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping
 import time
-
 
 # --- Step 1: Download Stock Data ---
 # Example: Apple (AAPL) and Tesla (TSLA), 2015-2023
@@ -425,3 +427,5 @@ plt.xlabel("Days")
 plt.ylabel("Price ($)")
 plt.legend()
 plt.show()
+
+
