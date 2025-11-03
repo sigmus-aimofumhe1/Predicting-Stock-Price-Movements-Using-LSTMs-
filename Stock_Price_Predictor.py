@@ -10,8 +10,11 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import load_model
 from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping
+import time
+
 
 # --- Step 1: Download Stock Data ---
 # Example: Apple (AAPL) and Tesla (TSLA), 2015-2023
@@ -350,8 +353,9 @@ for i in range(3):  # simulate 3 updates
     print(f"Live Update {i+1}: Predicted Next Price = ${pred_live_rescaled[0][0]:.2f}")
     time.sleep(2)  # simulate waiting for new data
 
+
 # -------------------------
-# Week 11: Model Optimization & Evaluation
+# Weeks 11-12: Model Optimization & Evaluation
 # -------------------------
 
 from tensorflow.keras.optimizers import Adam
