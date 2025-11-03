@@ -349,3 +349,75 @@ for i in range(3):  # simulate 3 updates
 
     print(f"Live Update {i+1}: Predicted Next Price = ${pred_live_rescaled[0][0]:.2f}")
     time.sleep(2)  # simulate waiting for new data
+
+# -------------------------
+# Week 11: Model Optimization & Evaluation
+# -------------------------
+
+from tensorflow.keras.optimizers import Adam
+from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error
+
+# --- Step 1: Re-load Data + Models ---
+ticker = "AAPL"
+data = yf.download(ticker, start="2015-01-01", end="2023-12-31")
+prices = data["Close"].values.reshape(-1, 1)
+
+scaler = MinMaxScaler(feature_range=(0, 1))
+scaled_data = scaler.fit_transform(prices)
+
+# Create sequences again
+window_size = 60
+X, y = create_sequences(scaled_data, window_size)
+X = np.reshape(X, (X.shape[0], X.shape[1], 1))
+
+train_size = int(0.8 * len(X))
+X_train, X_test = X[:train_size], X[train_size:]
+y_train, y_test = y[:train_size], y[train_size:]
+
+# --- Step 2: Rebuild Improved Model ---
+def build_lstm(lr=0.0005, units=64):
+    model = Sequential([
+        LSTM(units, return_sequences=True, input_shape=(X_train.shape[1], 1)),
+        Dropout(0.3),
+        LSTM(units, return_sequences=False),
+        Dropout(0.3),
+        Dense(1)
+    ])
+    model.compile(optimizer=Adam(learning_rate=lr), loss="mse")
+    return model
+
+optimized_model = build_lstm(lr=0.0005, units=64)
+
+es = EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True)
+
+history_opt = optimized_model.fit(
+    X_train, y_train,
+    epochs=40,
+    batch_size=32,
+    validation_split=0.1,
+    callbacks=[es],
+    verbose=1
+)
+
+# --- Step 3: Evaluate Model Performance ---
+y_pred_opt = optimized_model.predict(X_test)
+
+y_pred_opt_rescaled = scaler.inverse_transform(y_pred_opt)
+y_test_rescaled = scaler.inverse_transform(y_test.reshape(-1, 1))
+
+rmse = np.sqrt(mean_squared_error(y_test_rescaled, y_pred_opt_rescaled))
+mape = mean_absolute_percentage_error(y_test_rescaled, y_pred_opt_rescaled) * 100
+
+print(f"Optimized LSTM Model → RMSE: {rmse:.3f}, MAPE: {mape:.2f}%")
+
+# Save model
+optimized_model.save("optimized_lstm_model.h5")
+
+plt.figure(figsize=(12,6))
+plt.plot(y_test_rescaled, label="Actual Price")
+plt.plot(y_pred_opt_rescaled, label="Optimized LSTM Prediction")
+plt.title("Optimized LSTM Prediction vs Actual")
+plt.xlabel("Days")
+plt.ylabel("Price ($)")
+plt.legend()
+plt.show()
