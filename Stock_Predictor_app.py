@@ -4,13 +4,22 @@
 # -------------------------
 # Weeks 11-12: Streamlit Dashboard
 # -------------------------
+import os
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"   # Disables threading lock
+
 import streamlit as st
 import yfinance as yf
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import load_model
+from keras.models import load_model
+from keras.optimizers import Adam
 
-model = load_model("optimized_lstm_model.h5")
+model = load_model("stacked_lstm_model.h5", compile=False)
+model.compile(optimizer=Adam(learning_rate=0.001), loss="mse")
+
+# model = load_model("optimized_lstm_model.h5", compile=False)
+# model = load_model("bilstm_model.h5", compile=False)
 
 def create_latest_sequence(data, window_size=60):
     X = data[-window_size:]
@@ -31,3 +40,7 @@ if st.button("Predict Next Price"):
     price = scaler.inverse_transform(prediction)[0][0]
 
     st.success(f"Predicted Next Closing Price for {ticker}: **${price:.2f}**")
+
+
+# Run the app with: streamlit run /Users/sigmus_aimofumhe/Stock_Predictor_app.py
+
